@@ -3,21 +3,6 @@
 
 namespace pinger
 {
-ipv4_header::ipv4_header(
-    const std::uint32_t& source_addr,
-    const std::uint32_t& destination_addr,
-    const std::uint8_t& data_size,
-    const std::uint8_t& ttl)
-    : version_and_ihl{0x45}, dscp_and_ecn{IPV4_DSCP_CS2 << 2},
-    total_length{static_cast<std::uint16_t>(IPV4_HEADER_TOTAL_SIZE + data_size)},  identification{0},
-    flags_and_fragment_offset{0}, time_to_live{ttl},
-    protocol{IPV4_PROTOCOL_NUMBER_ICMP}, header_checksum{},
-    source_address{source_addr}, destination_address{destination_addr},
-    options{0}
-{
-    header_checksum = compute_checksum();
-}
-
 std::uint8_t ipv4_header::get_version() const
 {
     return (version_and_ihl >> 4) & 0b00001111;
@@ -28,16 +13,18 @@ std::uint32_t ipv4_header::get_ihl() const
     return (version_and_ihl & 0b00001111) * 4;
 }
 
-std::array<std::uint8_t, IPV4_HEADER_TOTAL_SIZE> ipv4_header::get_bytes() const
+std::vector<std::uint8_t> ipv4_header::get_bytes() const
 {
-    std::array<std::uint8_t, IPV4_HEADER_TOTAL_SIZE> buffer;
+    std::vector<std::uint8_t> buffer(IPV4_HEADER_TOTAL_SIZE, 0);
     std::fill_n(buffer.begin(), buffer.size(), 0);
     std::copy_n(reinterpret_cast<char*>(const_cast<ipv4_header*>(this)), IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, buffer.begin());
-    std::copy_n(this->options.begin(), IPV4_HEADER_OPTIONS_SIZE_IN_BYTES, buffer.begin() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES);
+    const std::uint8_t options_length = get_ihl() - IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES;
+    buffer.resize(IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES + options_length);
+    std::copy_n(this->options.begin(), options_length, buffer.begin() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES);
     return buffer;
 }
 
-std::uint16_t ipv4_header::compute_checksum()
+void ipv4_header::compute_and_set_header_checksum()
 {
     std::uint32_t sum = 0;
     // We need to compute sum of 16-bit values, so need to pack both in one 16-bit variable
@@ -67,8 +54,7 @@ std::uint16_t ipv4_header::compute_checksum()
 
     // Now we strip off the top 16-bits, leaving behind bottom 16-bits
     // And we perform 1s complement operation on the bottom 16-bits
-    std::uint16_t checksum = ~static_cast<std::uint16_t>(temp_sum);
-    return checksum;
+    header_checksum = ~static_cast<std::uint16_t>(temp_sum);
 }
 
 std::ostream& operator<<(std::ostream& os, const ipv4_header& header)
@@ -96,13 +82,13 @@ std::istream& operator>>(std::istream& is, ipv4_header& header)
         return is;
     }
     auto options_length = header.get_ihl() - IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES;
-    if (options_length < 0 || options_length > IPV4_HEADER_OPTIONS_SIZE_IN_BYTES)
+    if (options_length < 0 || options_length > IPV4_HEADER_OPTIONS_MAX_SIZE_IN_BYTES)
     {
         is.setstate(std::ios::failbit);
     }
     else
     {
-        is.read(buffer.data() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, IPV4_HEADER_OPTIONS_SIZE_IN_BYTES);
+        is.read(buffer.data() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, options_length);
     }
     header.dscp_and_ecn = buffer[1];
     header.total_length = (buffer[2] << 8) | buffer[3];
@@ -113,8 +99,87 @@ std::istream& operator>>(std::istream& is, ipv4_header& header)
     header.header_checksum = (buffer[10] << 8) | buffer[11];
     std::copy_n(buffer.data() + 12, 4, &header.source_address);
     std::copy_n(buffer.data() + 16, 4, &header.destination_address);
-    std::copy_n(buffer.data() + 20, IPV4_HEADER_OPTIONS_SIZE_IN_BYTES, header.options.begin());
+    std::copy_n(buffer.data() + 20, options_length, header.options.begin());
 
     return is;
 }
+
+ipv4_header_builder& ipv4_header_builder::set_dscp(const std::uint8_t &dscp)
+{
+    m_header.dscp_and_ecn = (m_header.dscp_and_ecn & 0b00000011) | (dscp << 2);
+    return *this;
+}
+
+ipv4_header_builder& ipv4_header_builder::set_ecn(const std::uint8_t &ecn)
+{
+    m_header.dscp_and_ecn = (m_header.dscp_and_ecn & 0b11111100) | ecn;
+    return *this;
+}
+
+ipv4_header_builder& ipv4_header_builder::set_payload_length(const std::uint16_t &payload_length)
+{
+    m_header.total_length = (m_header.version_and_ihl & 0b00001111) * 4 + payload_length;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_identification(const std::uint16_t &identification_)
+{
+    m_header.identification = identification_;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_flag_dont_fragment(bool dont_fragment)
+{
+    m_header.flags_and_fragment_offset = (m_header.flags_and_fragment_offset & 0xbfff) | (dont_fragment ? (1 << 14) : 0);
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_ttl(const std::uint8_t ttl)
+{
+    m_header.time_to_live = ttl;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_protocol(const std::uint8_t &protocol)
+{
+    m_header.protocol = protocol;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_source_address(const std::uint32_t &src_addr)
+{
+    m_header.source_address = src_addr;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_destination_address(const std::uint32_t &dst_addr)
+{
+    m_header.destination_address = dst_addr;
+    return *this;
+}
+
+ipv4_header_builder &ipv4_header_builder::set_options(const ipv4_header::OptionsVector &opt)
+{
+    if (opt.empty())
+    {
+        return *this;
+    }
+    if (opt.size() * 8 > IPV4_HEADER_OPTIONS_MAX_SIZE_IN_BYTES)
+    {
+        // TODO: should we set partial options vector?
+        return *this;
+    }
+    std::fill(m_header.options.begin(), m_header.options.end(), 0);
+    std::copy_n(opt.begin(), opt.size(), m_header.options.begin());
+    std::uint8_t no_of_32_bit_words = (opt.size() % 4 == 0 ? opt.size() / 4 : opt.size() / 4 + 1);
+    m_header.version_and_ihl = (m_header.version_and_ihl & 0b11110000) | no_of_32_bit_words;
+    return *this;
+}
+
+ipv4_header ipv4_header_builder::finalize_build()
+{
+    m_header.compute_and_set_header_checksum();
+    return m_header;
+}
+
 }   // namespace pinger
