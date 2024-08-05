@@ -22,16 +22,8 @@ struct alignas(4) icmp_header
     std::uint16_t identifier = 0;
     std::uint16_t sequence_number = 0;
 
-    friend std::ostream& operator<<(std::ostream& os, const icmp_header& header)
-    {
-        os << header.type << header.code << header.checksum << header.identifier << header.sequence_number;
-        return os;
-    }
-    friend std::istream& operator>>(std::istream& is, icmp_header& header)
-    {
-        is >> header.type >> header.code >> header.checksum >> header.identifier >> header.sequence_number;
-        return is;
-    }
+    friend std::ostream& operator<<(std::ostream& os, const icmp_header& header);
+    friend std::istream& operator>>(std::istream& is, icmp_header& header);
 };
 
 }   // namespace pinger

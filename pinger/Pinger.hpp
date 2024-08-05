@@ -1,19 +1,26 @@
 #pragma once
 #include <functional>
+#include <atomic>
 
 namespace pinger
 {
 
 struct PingerConfig
 {
-    // Number of ping requests to send, -1 means infinite
-    std::int32_t count = -1;
+    std::string destination_address;
+    // Number of ping requests to send, 0 means infinite
+    std::uint32_t count = 0;
 };
 
 class Pinger
 {
-public:
     using PingerCallbackOnNetworkChange = std::function<void(bool)>;
+
+    PingerCallbackOnNetworkChange m_callback;
+    PingerConfig m_conf;
+    std::atomic_bool is_recv_thread_running {false};
+
+public:
 
     Pinger(const PingerConfig& conf, PingerCallbackOnNetworkChange callback);
     void start();

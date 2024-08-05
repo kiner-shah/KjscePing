@@ -2,7 +2,7 @@
 
 namespace pinger
 {
-std::uint16_t compute_checksum(const icmp_header& header, const std::vector<char>& body)
+std::uint16_t compute_icmp_checksum(const icmp_header& header, const std::vector<char>& body)
 {
     std::uint32_t sum = 0;
     // Type and Code are 8 bits, and we need to compute
