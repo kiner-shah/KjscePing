@@ -1,6 +1,8 @@
 #pragma once
 #include <functional>
 #include <atomic>
+#include <memory>
+#include "Socket.hpp"
 
 namespace pinger
 {
@@ -19,6 +21,7 @@ class Pinger
     PingerCallbackOnNetworkChange m_callback;
     PingerConfig m_conf;
     std::atomic_bool is_recv_thread_running {false};
+    std::unique_ptr<Socket> m_socket;
 
 public:
 

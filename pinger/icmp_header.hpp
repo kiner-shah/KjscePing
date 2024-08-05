@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <cstdint>
 #include <ostream>
 #include <istream>
@@ -24,6 +25,21 @@ struct alignas(4) icmp_header
 
     friend std::ostream& operator<<(std::ostream& os, const icmp_header& header);
     friend std::istream& operator>>(std::istream& is, icmp_header& header);
+};
+
+class icmp_header_builder
+{
+    icmp_header m_header;
+    std::vector<std::uint8_t> m_payload;
+
+    std::uint16_t compute_icmp_checksum();
+public:
+    icmp_header_builder& set_type(const std::uint8_t& type_);
+    icmp_header_builder& set_code(const std::uint8_t& code_);
+    icmp_header_builder& set_identifier(const std::uint16_t& id);
+    icmp_header_builder& set_sequence_number(const std::uint16_t& seq_no);
+    icmp_header_builder& set_payload(const std::vector<std::uint8_t>& payload);
+    icmp_header finalize_build();
 };
 
 }   // namespace pinger
