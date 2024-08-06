@@ -6,5 +6,5 @@
 
 namespace pinger
 {
-std::uint16_t compute_icmp_checksum(const icmp_header& header, const std::vector<std::uint8_t>& data);
+
 }   // namespace pinger
