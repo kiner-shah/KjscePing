@@ -59,6 +59,7 @@ void ipv4_header::compute_and_set_header_checksum()
 
 std::ostream& operator<<(std::ostream& os, const ipv4_header& header)
 {
+    // TODO: use htonl, htons, etc.
     os << header.version_and_ihl << header.dscp_and_ecn << header.total_length << header.identification
         << header.flags_and_fragment_offset << header.time_to_live << header.protocol << header.header_checksum
         << header.source_address << header.destination_address;
@@ -90,6 +91,7 @@ std::istream& operator>>(std::istream& is, ipv4_header& header)
     {
         is.read(buffer.data() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, options_length);
     }
+    // TODO: use ntohl, ntohs, etc.
     header.dscp_and_ecn = buffer[1];
     header.total_length = (buffer[2] << 8) | buffer[3];
     header.identification = (buffer[4] << 8) | buffer[5];

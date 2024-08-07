@@ -29,6 +29,11 @@ class Pinger
     std::thread m_receive_thread;
     std::mutex m_mutex;
     std::condition_variable m_cv;
+    std::atomic_int16_t m_sequence_number {0};
+
+    const std::uint16_t m_identifier;
+    const std::uint32_t m_source_ip_address;
+    const std::uint32_t m_dest_ip_address;
 
 public:
     Pinger(const PingerConfig& conf, PingerCallbackOnNetworkChange callback);
