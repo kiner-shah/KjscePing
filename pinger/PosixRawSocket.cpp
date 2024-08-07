@@ -1,6 +1,7 @@
 #include "PosixRawSocket.hpp"
 #include <cstring>
 #include <system_error>
+#include <iostream>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -10,10 +11,11 @@ namespace pinger
 {
 PosixRawSocket::PosixRawSocket()
 {
-    m_sock_fd = ::socket(AF_INET, SOCK_RAW, IP_PROTO_ICMP);
+    m_sock_fd = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (m_sock_fd < 0)
     {
-        throw std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        std::cerr << "Socket creation failed [" << errno << ']' << strerror(errno) << '\n';
+        exit(EXIT_FAILURE);
     }
 }
 
@@ -25,50 +27,38 @@ PosixRawSocket::~PosixRawSocket()
     }
 }
 
-bool PosixRawSocket::connect(const std::string &destination_address)
+std::system_error PosixRawSocket::connect(const std::string &destination_address)
 {
     m_dest_addr.sin_family = AF_INET;
     m_dest_addr.sin_addr.s_addr = 0x7f000001;   // TODO: convert destination_address to int
     auto ret = ::connect(m_sock_fd, reinterpret_cast<::sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (ret < 0)
     {
-        throw std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
-        return false;
+        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return true;
+    return std::system_error{};
 }
 
-bool PosixRawSocket::send(const char *buffer, std::size_t buffer_length)
+std::system_error PosixRawSocket::send(const char* buffer, std::size_t buffer_length, int& bytes_sent)
 {
-    auto bytes_sent = ::sendto(m_sock_fd, buffer, buffer_length, 0, reinterpret_cast<::sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
+    bytes_sent = ::sendto(m_sock_fd, buffer, buffer_length, 0, reinterpret_cast<::sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (bytes_sent < 0)
     {
-        throw std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return true;
+    return std::system_error{};
 }
 
-bool PosixRawSocket::recv(char *buffer, std::size_t buffer_length)
+std::system_error PosixRawSocket::recv(char *buffer, std::size_t buffer_length, int& bytes_recv)
 {
     ::sockaddr recv_from_address;
     ::socklen_t recv_from_address_length;
-    auto bytes_read = ::recvfrom(m_sock_fd, buffer, buffer_length, MSG_WAITALL, &recv_from_address, &recv_from_address_length);
-    if (bytes_read < 0)
+    bytes_recv = ::recvfrom(m_sock_fd, buffer, buffer_length, MSG_WAITALL, &recv_from_address, &recv_from_address_length);
+    if (bytes_recv < 0)
     {
-        throw std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    else
-    {
-        // Check if recv_from_address is same as m_dest_addr
-        ::sockaddr_in* recv_from_address_in = reinterpret_cast<::sockaddr_in*>(&recv_from_address);
-        if (recv_from_address_in->sin_family != m_dest_addr.sin_family
-            || recv_from_address_in->sin_addr.s_addr != m_dest_addr.sin_addr.s_addr)
-        {
-            return false;
-        }
-        // TODO: do something with bytes_read and buffer
-    }
-    return true;
+    return std::system_error{};
 }
 
 }   // namespace pinger

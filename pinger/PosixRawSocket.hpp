@@ -8,10 +8,6 @@
 
 namespace pinger
 {
-
-// Based on list in /etc/protocols
-constexpr std::int32_t IP_PROTO_ICMP = 1;
-
 class PosixRawSocket : public Socket
 {
     std::int32_t m_sock_fd;
@@ -19,8 +15,8 @@ class PosixRawSocket : public Socket
 public:
     PosixRawSocket();
     ~PosixRawSocket();
-    bool connect(const std::string& destination_address) override;
-    bool send(const char* buffer, std::size_t buffer_length) override;
-    bool recv(char* buffer, std::size_t buffer_length) override;
+    std::system_error connect(const std::string &destination_address) override;
+    std::system_error send(const char* buffer, std::size_t buffer_length, int& bytes_sent) override;
+    std::system_error recv(char* buffer, std::size_t buffer_length, int& bytes_recv) override;
 };
 }   // namespace pinger
