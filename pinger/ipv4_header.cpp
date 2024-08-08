@@ -1,4 +1,5 @@
 #include "ipv4_header.hpp"
+#include "utils.hpp"
 #include <algorithm>
 
 namespace pinger
@@ -31,7 +32,6 @@ void ipv4_header::compute_and_set_header_checksum()
     sum += (version_and_ihl << 8) + dscp_and_ecn;
     sum += total_length + identification + flags_and_fragment_offset;
     sum += (time_to_live << 8) + protocol;
-    sum += header_checksum;
     sum += source_address;
     sum += destination_address;
 
@@ -59,16 +59,28 @@ void ipv4_header::compute_and_set_header_checksum()
 
 std::ostream& operator<<(std::ostream& os, const ipv4_header& header)
 {
-    // TODO: use htonl, htons, etc.
-    os << header.version_and_ihl << header.dscp_and_ecn << header.total_length << header.identification
-        << header.flags_and_fragment_offset << header.time_to_live << header.protocol << header.header_checksum
-        << header.source_address << header.destination_address;
-    for (const std::uint8_t& option : header.options)
+    std::uint16_t total_length = host_to_network_short(header.total_length);
+    std::uint16_t identification = host_to_network_short(header.identification);
+    std::uint16_t flags_and_fragment_offset = host_to_network_short(header.flags_and_fragment_offset);
+    std::uint16_t header_checksum = host_to_network_short(header.header_checksum);
+
+    os << header.version_and_ihl << header.dscp_and_ecn;
+    os.write(reinterpret_cast<const char*>(&total_length), sizeof(total_length));
+    os.write(reinterpret_cast<const char*>(&identification), sizeof(identification));
+    os.write(reinterpret_cast<const char*>(&flags_and_fragment_offset), sizeof(flags_and_fragment_offset));
+    os << header.time_to_live << header.protocol;
+    os.write(reinterpret_cast<const char*>(&header_checksum), sizeof(header_checksum));
+    os.write(reinterpret_cast<const char*>(&header.source_address), sizeof(header.source_address));
+    os.write(reinterpret_cast<const char*>(&header.destination_address), sizeof(header.destination_address));
+
+    auto options_length = header.get_ihl() - IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES;
+    for (std::size_t i = 0; i < options_length; i++)
     {
-        os << option;
+        os << header.options.at(i);
     }
     return os;
 }
+
 std::istream& operator>>(std::istream& is, ipv4_header& header)
 {
     std::array<char, IPV4_HEADER_TOTAL_SIZE> buffer;
@@ -106,7 +118,7 @@ std::istream& operator>>(std::istream& is, ipv4_header& header)
     return is;
 }
 
-ipv4_header_builder& ipv4_header_builder::set_dscp(const std::uint8_t &dscp)
+ipv4_header_builder &ipv4_header_builder::set_dscp(const std::uint8_t &dscp)
 {
     m_header.dscp_and_ecn = (m_header.dscp_and_ecn & 0b00000011) | (dscp << 2);
     return *this;
@@ -120,7 +132,7 @@ ipv4_header_builder& ipv4_header_builder::set_ecn(const std::uint8_t &ecn)
 
 ipv4_header_builder& ipv4_header_builder::set_payload_length(const std::uint16_t &payload_length)
 {
-    m_header.total_length = (m_header.version_and_ihl & 0b00001111) * 4 + payload_length;
+    m_header.total_length = m_header.get_ihl() + payload_length;
     return *this;
 }
 

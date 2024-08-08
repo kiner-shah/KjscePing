@@ -10,12 +10,18 @@
 namespace pinger
 {
 Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
-    : m_callback(std::move(callback)), m_conf{conf}, m_identifier{1234}
+    : m_callback(std::move(callback)), m_conf{conf}, m_identifier{get_process_id()}
     , m_source_ip_address{get_ip_address("172.23.94.231")}
     , m_dest_ip_address{get_ip_address(conf.destination_address)}
 {
     // TODO: create a socket (use a factory?), call connect
     m_socket = create_socket();
+    auto ret = m_socket->connect(m_dest_ip_address);
+    if (ret.code().value() != 0)
+    {
+        std::cerr << "Connect failed [" << ret.code().value() << "] " << ret.code().message() << '\n';
+        exit(EXIT_FAILURE);
+    }
 
     m_receive_thread = std::thread([this]() {
         m_is_recv_thread_running = true;
@@ -33,19 +39,26 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
                 s.write(buffer.data(), bytes_recv);
                 icmp_header icmp_hdr;
                 ipv4_header ip_hdr;
-                s >> ip_hdr >> icmp_hdr;
-                if (s && icmp_hdr.type == ICMP_TYPE_ECHO_REPLY
+                if (!(s >> icmp_hdr))
+                {
+                    std::cout << "Something went wrong in ICMP header parse\n";
+                }
+                if (icmp_hdr.type == ICMP_TYPE_ECHO_REPLY
                         && icmp_hdr.identifier == m_identifier
                         && icmp_hdr.sequence_number == m_sequence_number)
                 {
                     m_cv.notify_one();
 
-                    // TODO: log echo response
+                    std::cout << "ECHO RESPONSE\n";
+                }
+                else
+                {
+                    std::cout << "Something went wrong in ICMP response validation\n";
                 }
             }
             else
             {
-                std::cerr << "Recv failed [" << errno << ']' << strerror(errno) << '\n';
+                std::cerr << "Recv failed [" << errno << "] " << strerror(errno) << '\n';
                 // TODO: maybe add a log message?
                 exit(EXIT_FAILURE);
             }
@@ -79,19 +92,21 @@ void Pinger::start()
                             .set_destination_address(m_dest_ip_address)
                             .set_ttl(120)
                             .set_payload_length(sizeof(icmp_header) + message.length())
+                            .set_protocol(IPV4_PROTOCOL_NUMBER_ICMP)
                             .finalize_build();
 
     std::stringstream s;
-    s << ip_hdr << icmp_hdr;
+    s << icmp_hdr << message;
     const std::string buffer = s.str();
 
     // Send
-    // TODO: log echo request
+    std::cout << "ECHO REQUEST to " << get_ip_string(m_dest_ip_address) << '\n';
+
     int bytes_sent = 0;
     auto ret = m_socket->send(buffer.c_str(), buffer.length(), bytes_sent);
     if (ret.code().value() != 0)
     {
-        // TODO: failed - what to do?
+        std::cerr << "Send failed [" << ret.code().value() << "] " << ret.code().message() << '\n';
         exit(EXIT_FAILURE);
     }
     else
@@ -101,7 +116,7 @@ void Pinger::start()
         std::cv_status status = m_cv.wait_for(lock, 5s);
         if (status == std::cv_status::timeout)
         {
-            // TODO: log timeout
+            std::cout << "TIMEOUT\n";
             if (m_is_network_available)
             {
                 m_is_network_available = false;

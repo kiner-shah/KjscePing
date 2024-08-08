@@ -32,21 +32,21 @@ struct alignas(4) ipv4_header
     std::uint8_t version_and_ihl = IPV4_VERSION_IHL_DEFAULT;
     // first 6-bits contain DSCP (Differentiated Services Code Point), rest 2-bits contain ECN (Explicit Congestion Notification)
     std::uint8_t dscp_and_ecn = (IPV4_DSCP_CS2 << 2);
-    std::uint16_t total_length;
-    std::uint16_t identification;
+    std::uint16_t total_length = 0;
+    std::uint16_t identification = 0;
     // first 3-bits contain flags, rest 13-bits contain fragment offset
     // Flags are in order (left-to-right): More Fragments, Don't Fragment and Reserved (always 0)
-    std::uint16_t flags_and_fragment_offset;
-    std::uint8_t time_to_live;
-    std::uint8_t protocol;
-    std::uint16_t header_checksum;
-    std::uint32_t source_address;
-    std::uint32_t destination_address;
+    std::uint16_t flags_and_fragment_offset = 0;
+    std::uint8_t time_to_live = 0;
+    std::uint8_t protocol = 0;
+    std::uint16_t header_checksum = 0;
+    std::uint32_t source_address = 0;
+    std::uint32_t destination_address = 0;
     // Options are usually like this
     // Option Code - 8 bytes (Copied, Option Class, Option Number bits)
     // Option Length - 8 bytes (optional)
     // Option Data Value - variable length (optional, based on option length)
-    OptionsArray options;
+    OptionsArray options = {0};
 
     void compute_and_set_header_checksum();
     std::uint8_t get_version() const;
