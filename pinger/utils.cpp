@@ -1,6 +1,7 @@
 #include "utils.hpp"
 #include <cstdint>
 #include <cstring>
+#include <iostream>
 
 #if defined(_WIN32)
 #include <winsock2.h>
@@ -11,6 +12,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #endif
 
 namespace pinger
@@ -59,11 +61,11 @@ std::uint32_t get_ip_address(const std::string &address_str)
     ::addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
-    hints.ai_protocol = IPPROTO_ICMP;
-    hints.ai_socktype = SOCK_RAW;
+    hints.ai_protocol = 0;
+    hints.ai_socktype = SOCK_DGRAM;
 
     ::addrinfo* result;
-    auto ret = ::getaddrinfo(address_str.c_str(), "icmp", &hints, &result);
+    auto ret = ::getaddrinfo(address_str.c_str(), "echo", &hints, &result);
     if (ret < 0)
     {
         return 0;
@@ -80,6 +82,7 @@ std::uint32_t get_ip_address(const std::string &address_str)
         {
             ::close(sfd);
             ::sockaddr_in* addr = reinterpret_cast<::sockaddr_in*>(p->ai_addr);
+            std::cerr << address_str << " resolved to address: " << inet_ntoa(addr->sin_addr) << '\n';
             ret_address = addr->sin_addr.s_addr;
             break;
         }
@@ -87,6 +90,26 @@ std::uint32_t get_ip_address(const std::string &address_str)
     }
     ::freeaddrinfo(result);
     return ret_address;
+#endif
+}
+
+std::uint16_t get_process_id()
+{
+#if defined(_WIN32)
+    return static_cast<std::uint16_t>(::GetCurrentProcessId());
+#elif defined(__unix__)
+    return static_cast<std::uint16_t>(::getpid());
+#endif
+}
+
+std::string get_ip_string(std::uint32_t ip_address)
+{
+#if defined(_WIN32)
+    return "";
+#elif defined(__unix__)
+    ::sockaddr_in addr;
+    addr.sin_addr.s_addr = ip_address;
+    return std::string(::inet_ntoa(addr.sin_addr));
 #endif
 }
 

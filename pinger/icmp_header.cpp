@@ -1,17 +1,37 @@
 #include "icmp_header.hpp"
+#include "utils.hpp"
+#include <iostream>
 
 namespace pinger
 {
 std::ostream& operator<<(std::ostream& os, const icmp_header& header)
 {
-    os << header.type << header.code << header.checksum << header.identifier << header.sequence_number;
+    std::uint16_t id = host_to_network_short(header.identifier);
+    std::uint16_t seq = host_to_network_short(header.sequence_number);
+    std::uint16_t checksum = host_to_network_short(header.checksum);
+
+    os << header.type << header.code;
+    os.write(reinterpret_cast<const char*>(&checksum), sizeof(checksum));
+    os.write(reinterpret_cast<const char*>(&id), sizeof(id));
+    os.write(reinterpret_cast<const char*>(&seq), sizeof(seq));
+
     return os;
 }
+
 std::istream& operator>>(std::istream& is, icmp_header& header)
 {
-    is >> header.type >> header.code >> header.checksum >> header.identifier >> header.sequence_number;
+    is.read(reinterpret_cast<char*>(&header), sizeof(header));
+
+    header.checksum = network_to_host_short(header.checksum);
+
+    // Not sure why identifier is already in little endian, thus commented the below line
+    //header.identifier = network_to_host_short(header.identifier);
+
+    header.sequence_number = network_to_host_short(header.sequence_number);
+
     return is;
 }
+
 icmp_header_builder &icmp_header_builder::set_type(const std::uint8_t &type_)
 {
     m_header.type = type_;
