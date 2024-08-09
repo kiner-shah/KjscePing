@@ -1,6 +1,6 @@
 ## TODO
 - Compile for Windows
-
+- Use non-blocking socket for Windows
 
 ### Experiment?
 - Make it such that a new socket is created for each request

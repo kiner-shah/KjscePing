@@ -51,12 +51,20 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
                 s.write(buffer.data(), bytes_recv);
                 icmp_header icmp_hdr;
                 ipv4_header ip_hdr;
+#if defined(_WIN32)
+                if (!(s >> ip_hdr))
+                {
+                    std::cerr << "Something went wrong in IP header parse\n";
+                }
+#endif
                 if (!(s >> icmp_hdr))
                 {
                     std::cerr << "Something went wrong in ICMP header parse\n";
                 }
                 if (icmp_hdr.type == ICMP_TYPE_ECHO_REPLY
+#if not defined(_WIN32)
                         && icmp_hdr.identifier == m_identifier
+#endif
                         && icmp_hdr.sequence_number == m_sequence_number)
                 {
                     m_cv.notify_one();
