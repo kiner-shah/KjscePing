@@ -16,5 +16,4 @@ int main()
 
     pinger::Pinger pinger{config, callback};
     pinger.start();
-    std::this_thread::sleep_for(std::chrono::seconds(5));
 }

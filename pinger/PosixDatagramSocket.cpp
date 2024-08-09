@@ -1,3 +1,4 @@
+#if defined(__unix__)
 #include "PosixDatagramSocket.hpp"
 #include "utils.hpp"
 #include <cstring>
@@ -92,3 +93,4 @@ std::system_error PosixDatagramSocket::disconnect()
 }
 
 }   // namespace pinger
+#endif  // if defined(__unix__)
