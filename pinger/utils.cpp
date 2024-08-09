@@ -56,7 +56,41 @@ std::uint32_t host_to_network_long(std::uint32_t val)
 std::uint32_t get_ip_address(const std::string &address_str)
 {
 #if defined(_WIN32)
-    return 0;
+    auto ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (ret != 0) {
+        return 0;
+    }
+    addrinfo hints;
+    ZeroMemory( &hints, sizeof(hints) );
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = 0;
+
+    addrinfo* result;
+    ret = addrinfo(address_str.c_str(), "echo", &hints, &result);
+    if ( ret != 0 ) {
+        WSACleanup();
+        return 0;
+    }
+    std::uint32_t ret_address = 0;
+    for (::addrinfo* p = result; p != nullptr; p = p->ai_next)
+    {
+        auto sck = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+        if (sck == INVALID_SOCKET)
+        {
+            continue;
+        }
+        if (connect(sck, p->ai_addr, p->ai_addrlen) == 0)
+        {
+            closesocket(sck);
+            sockaddr_in* addr = reinterpret_cast<sockaddr_in*>(p->ai_addr);
+            std::cerr << address_str << " resolved to address: " << inet_ntoa(addr->sin_addr) << '\n';
+            ret_address = addr->sin_addr.S_un.S_addr;
+        }
+        closesocket(sck);
+    }
+    WSACleanup();
+    return ret_address;
 #elif defined(__unix__)
     ::addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
@@ -82,7 +116,7 @@ std::uint32_t get_ip_address(const std::string &address_str)
         {
             ::close(sfd);
             ::sockaddr_in* addr = reinterpret_cast<::sockaddr_in*>(p->ai_addr);
-            std::cerr << address_str << " resolved to address: " << inet_ntoa(addr->sin_addr) << '\n';
+            std::cerr << address_str << " resolved to address: " << ::inet_ntoa(addr->sin_addr) << '\n';
             ret_address = addr->sin_addr.s_addr;
             break;
         }
@@ -105,7 +139,9 @@ std::uint16_t get_process_id()
 std::string get_ip_string(std::uint32_t ip_address)
 {
 #if defined(_WIN32)
-    return "";
+    sockaddr_in addr;
+    addr.sin_addr.S_un.S_addr = ip_address;
+    return std::string(inet_ntoa(addr.sin_addr));
 #elif defined(__unix__)
     ::sockaddr_in addr;
     addr.sin_addr.s_addr = ip_address;
