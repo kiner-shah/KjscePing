@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(PINGER_SOURCES
     utils.cpp
-    WindowsDatagramSocket.cpp
+    WindowsRawSocket.cpp
     PosixDatagramSocket.cpp
     Socket.cpp
     ipv4_header.cpp

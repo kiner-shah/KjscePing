@@ -1,5 +1,5 @@
 #if defined(_WIN32)
-#include "WindowsDatagramSocket.hpp"
+#include "WindowsRawSocket.hpp"
 #include "utils.hpp"
 #include <system_error>
 #include <iostream>
@@ -25,7 +25,7 @@ std::string get_error_message_from_error_code(int error_code)
     return std::string(message_buffer.begin(), message_buffer.end());
 }
 }   // namespace
-WindowsDatagramSocket::WindowsDatagramSocket()
+WindowsRawSocket::WindowsRawSocket()
 {
     WSADATA wsa_data;
     int ret = WSAStartup(MAKEWORD(2,2), &wsa_data);
@@ -35,7 +35,7 @@ WindowsDatagramSocket::WindowsDatagramSocket()
         exit(EXIT_FAILURE);
     }
 
-    m_sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+    m_sock = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (m_sock == INVALID_SOCKET)
     {
         int ret = WSAGetLastError();
@@ -45,7 +45,7 @@ WindowsDatagramSocket::WindowsDatagramSocket()
     }
 }
 
-WindowsDatagramSocket::~WindowsDatagramSocket()
+WindowsRawSocket::~WindowsRawSocket()
 {
     if (m_sock != INVALID_SOCKET)
     {
@@ -54,7 +54,7 @@ WindowsDatagramSocket::~WindowsDatagramSocket()
     }
 }
 
-std::system_error WindowsDatagramSocket::connect(const std::uint32_t &destination_address)
+std::system_error WindowsRawSocket::connect(const std::uint32_t &destination_address)
 {
     m_dest_addr.sin_family = AF_INET;
     m_dest_addr.sin_addr.S_un.S_addr = destination_address;
@@ -86,7 +86,7 @@ std::system_error WindowsDatagramSocket::connect(const std::uint32_t &destinatio
     return std::system_error(std::error_code());
 }
 
-std::system_error WindowsDatagramSocket::send(const char *buffer, std::size_t buffer_length, int &bytes_sent)
+std::system_error WindowsRawSocket::send(const char *buffer, std::size_t buffer_length, int &bytes_sent)
 {
     auto ret = ::sendto(m_sock, buffer, buffer_length, 0, reinterpret_cast<sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (ret == SOCKET_ERROR)
@@ -97,7 +97,7 @@ std::system_error WindowsDatagramSocket::send(const char *buffer, std::size_t bu
     return std::system_error(std::error_code());
 }
 
-std::system_error WindowsDatagramSocket::recv(char *buffer, std::size_t buffer_length, int &bytes_recv)
+std::system_error WindowsRawSocket::recv(char *buffer, std::size_t buffer_length, int &bytes_recv)
 {
     sockaddr recv_from_address;
     socklen_t recv_from_address_length;
@@ -111,7 +111,7 @@ std::system_error WindowsDatagramSocket::recv(char *buffer, std::size_t buffer_l
     return std::system_error(std::error_code());
 }
 
-std::system_error WindowsDatagramSocket::disconnect()
+std::system_error WindowsRawSocket::disconnect()
 {
     auto ret = ::shutdown(m_sock, SD_BOTH);
     if (ret == SOCKET_ERROR)
