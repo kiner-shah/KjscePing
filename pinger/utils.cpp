@@ -68,7 +68,7 @@ std::uint32_t get_ip_address(const std::string &address_str)
     hints.ai_protocol = 0;
 
     addrinfo* result;
-    ret = addrinfo(address_str.c_str(), "echo", &hints, &result);
+    ret = getaddrinfo(address_str.c_str(), "echo", &hints, &result);
     if ( ret != 0 ) {
         WSACleanup();
         return 0;

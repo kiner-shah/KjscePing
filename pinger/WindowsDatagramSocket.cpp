@@ -1,7 +1,9 @@
 #if defined(_WIN32)
 #include "WindowsDatagramSocket.hpp"
+#include "utils.hpp"
 #include <system_error>
 #include <iostream>
+#include <array>
 
 namespace pinger
 {
@@ -47,7 +49,7 @@ WindowsDatagramSocket::~WindowsDatagramSocket()
 {
     if (m_sock != INVALID_SOCKET)
     {
-        closesocket(m_sock);
+        ::closesocket(m_sock);
         WSACleanup();
     }
 }
@@ -68,56 +70,56 @@ std::system_error WindowsDatagramSocket::connect(const std::uint32_t &destinatio
     // We want to use current process id for ICMP header identifier,
     // so we set the port above to current process id. And then we bind
     // to that port.
-    auto ret = bind(m_sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
+    auto ret = ::bind(m_sock, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
 
-    ret = connect(m_sock, reinterpret_cast<sockaddr*>(&m_dest_arr), sizeof(m_dest_arr));
+    ret = ::connect(m_sock, reinterpret_cast<sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error WindowsDatagramSocket::send(const char *buffer, std::size_t buffer_length, int &bytes_sent)
 {
-    auto ret = sendto(m_sock, buffer, buffer_length, 0, reinterpret_cast<sockaddr*>(&m_dest_arr), sizeof(m_dest_arr));
+    auto ret = ::sendto(m_sock, buffer, buffer_length, 0, reinterpret_cast<sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error WindowsDatagramSocket::recv(char *buffer, std::size_t buffer_length, int &bytes_recv)
 {
     sockaddr recv_from_address;
     socklen_t recv_from_address_length;
-    auto ret = recvfrom(m_sock, buffer, buffer_length, MSG_WAITALL, &recv_from_address, &recv_from_address_length);
+    auto ret = ::recv(m_sock, buffer, buffer_length, 0);
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
     bytes_recv = ret;
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error WindowsDatagramSocket::disconnect()
 {
-    auto ret = shutdown(m_sock, SD_BOTH);
+    auto ret = ::shutdown(m_sock, SD_BOTH);
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 } // namespace pinger
 #endif  // if defined(_WIN32)

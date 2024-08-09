@@ -57,7 +57,7 @@ std::system_error PosixDatagramSocket::connect(const std::uint32_t& destination_
     {
         return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error PosixDatagramSocket::send(const char* buffer, std::size_t buffer_length, int& bytes_sent)
@@ -67,7 +67,7 @@ std::system_error PosixDatagramSocket::send(const char* buffer, std::size_t buff
     {
         return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error PosixDatagramSocket::recv(char *buffer, std::size_t buffer_length, int& bytes_recv)
@@ -79,7 +79,7 @@ std::system_error PosixDatagramSocket::recv(char *buffer, std::size_t buffer_len
     {
         return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 std::system_error PosixDatagramSocket::disconnect()
@@ -89,7 +89,7 @@ std::system_error PosixDatagramSocket::disconnect()
     {
         return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
     }
-    return std::system_error{};
+    return std::system_error(std::error_code());
 }
 
 }   // namespace pinger
