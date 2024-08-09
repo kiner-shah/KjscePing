@@ -18,5 +18,6 @@ public:
     std::system_error connect(const std::uint32_t& destination_address) override;
     std::system_error send(const char* buffer, std::size_t buffer_length, int& bytes_sent) override;
     std::system_error recv(char* buffer, std::size_t buffer_length, int& bytes_recv) override;
+    std::system_error disconnect() override;
 };
 }   // namespace pinger

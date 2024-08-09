@@ -4,6 +4,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <chrono>
 #include <condition_variable>
 #include "Socket.hpp"
 
@@ -20,6 +21,7 @@ struct PingerConfig
 class Pinger
 {
     using PingerCallbackOnNetworkChange = std::function<void(bool)>;
+    using LoopCondition = std::function<bool(void)>;
 
     PingerCallbackOnNetworkChange m_callback;
     bool m_is_network_available {false};
@@ -30,6 +32,10 @@ class Pinger
     std::mutex m_mutex;
     std::condition_variable m_cv;
     std::atomic_int16_t m_sequence_number {0};
+    LoopCondition m_loop_condition;
+    std::uint32_t m_loop_counter;
+
+    std::chrono::time_point<std::chrono::steady_clock> m_request_start_time;
 
     const std::uint16_t m_identifier;
     const std::uint32_t m_source_ip_address;

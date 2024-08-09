@@ -81,4 +81,14 @@ std::system_error PosixDatagramSocket::recv(char *buffer, std::size_t buffer_len
     return std::system_error{};
 }
 
+std::system_error PosixDatagramSocket::disconnect()
+{
+    auto ret = ::shutdown(m_sock_fd, SHUT_RDWR);
+    if (ret < 0)
+    {
+        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+    }
+    return std::system_error{};
+}
+
 }   // namespace pinger

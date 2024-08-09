@@ -11,7 +11,7 @@ namespace pinger
 constexpr std::uint8_t IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES = 20;
 // TODO: may need to change name of below two constants
 constexpr std::uint8_t IPV4_HEADER_OPTIONS_MAX_SIZE_IN_BYTES = 40;
-constexpr std::uint8_t IPV4_HEADER_TOTAL_SIZE = 60;
+constexpr std::uint8_t IPV4_HEADER_MAX_TOTAL_SIZE = 60;
 
 constexpr std::uint8_t IPV4_PROTOCOL_NUMBER_ICMP = 1;
 // For Network operations, administration and management (OAM), example: ping, ssh, telnet, etc.
