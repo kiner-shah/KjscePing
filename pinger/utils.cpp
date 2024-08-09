@@ -56,7 +56,8 @@ std::uint32_t host_to_network_long(std::uint32_t val)
 std::uint32_t get_ip_address(const std::string &address_str)
 {
 #if defined(_WIN32)
-    auto ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    WSADATA wsa_data;
+    auto ret = WSAStartup(MAKEWORD(2, 2), &wsa_data);
     if (ret != 0) {
         return 0;
     }

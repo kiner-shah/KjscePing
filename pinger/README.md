@@ -1,9 +1,7 @@
 ## TODO
-~~ While loop for echo requests ~~
-~~ Implement infinite or count-based pinger ~~
-~~ Time between request and response to be logged ~~
-~~ Proper socket close handling ~~
-~~ Call ::shutdown() when there is a timeout to close the connection ~~
+- Add CMakeLists.txt
+- Compile for Windows
+
 
 ### Experiment?
 - Make it such that a new socket is created for each request
