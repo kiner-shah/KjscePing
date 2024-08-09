@@ -1,5 +1,4 @@
 ## TODO
-- Add CMakeLists.txt
 - Compile for Windows
 
 
