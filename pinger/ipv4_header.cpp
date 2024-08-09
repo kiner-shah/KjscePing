@@ -16,7 +16,7 @@ std::uint32_t ipv4_header::get_ihl() const
 
 std::vector<std::uint8_t> ipv4_header::get_bytes() const
 {
-    std::vector<std::uint8_t> buffer(IPV4_HEADER_TOTAL_SIZE, 0);
+    std::vector<std::uint8_t> buffer(IPV4_HEADER_MAX_TOTAL_SIZE, 0);
     std::fill_n(buffer.begin(), buffer.size(), 0);
     std::copy_n(reinterpret_cast<char*>(const_cast<ipv4_header*>(this)), IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, buffer.begin());
     const std::uint8_t options_length = get_ihl() - IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES;
@@ -83,7 +83,7 @@ std::ostream& operator<<(std::ostream& os, const ipv4_header& header)
 
 std::istream& operator>>(std::istream& is, ipv4_header& header)
 {
-    std::array<char, IPV4_HEADER_TOTAL_SIZE> buffer;
+    std::array<char, IPV4_HEADER_MAX_TOTAL_SIZE> buffer;
     if (!is.read(buffer.data(), IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES))
     {
         return is;

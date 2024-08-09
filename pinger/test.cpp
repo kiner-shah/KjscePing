@@ -7,7 +7,7 @@
 int main()
 {
     pinger::PingerConfig config;
-    config.count = -1;
+    config.count = 4;
     config.destination_address = "google.com";
 
     auto callback = [](bool is_online) {
