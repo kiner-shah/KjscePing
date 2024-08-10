@@ -23,10 +23,10 @@ std::istream& operator>>(std::istream& is, icmp_header& header)
     is.read(reinterpret_cast<char*>(&header), sizeof(header));
 
     header.checksum = network_to_host_short(header.checksum);
-
-    // Not sure why identifier is already in little endian, thus commented the below line
-    //header.identifier = network_to_host_short(header.identifier);
-
+#if defined(_WIN32)
+    // Not sure why identifier is already in little endian for Linux, thus enabled it only for Windows
+    header.identifier = network_to_host_short(header.identifier);
+#endif
     header.sequence_number = network_to_host_short(header.sequence_number);
 
     return is;

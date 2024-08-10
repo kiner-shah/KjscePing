@@ -63,8 +63,8 @@ std::system_error WindowsRawSocket::connect(const std::uint32_t &destination_add
 
     sockaddr_in addr;
     addr.sin_family = AF_INET;
-    addr.sin_port = get_process_id();
-    addr.sin_addr.S_un.S_addr = INADDR_ANY;
+    addr.sin_port = host_to_network_short(get_process_id());
+    addr.sin_addr.S_un.S_addr = host_to_network_long(INADDR_ANY);
 
     // ICMP header identifier is the port that the socket has bound to.
     // We want to use current process id for ICMP header identifier,
@@ -113,12 +113,13 @@ std::system_error WindowsRawSocket::recv(char *buffer, std::size_t buffer_length
 
 std::system_error WindowsRawSocket::disconnect()
 {
-    auto ret = ::shutdown(m_sock, SD_BOTH);
+    auto ret = ::shutdown(m_sock, SD_SEND);
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(std::make_error_code(static_cast<std::errc>(err)), get_error_message_from_error_code(err));
     }
+    //::closesocket(m_sock);
     return std::system_error(std::error_code());
 }
 } // namespace pinger

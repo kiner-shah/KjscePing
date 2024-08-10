@@ -20,6 +20,7 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
     if (ret.code().value() != 0)
     {
         std::cerr << "Connect failed [" << ret.code().value() << "] " << ret.code().message() << '\n';
+        m_socket.reset();
         exit(EXIT_FAILURE);
     }
 
@@ -62,9 +63,7 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
                     std::cerr << "Something went wrong in ICMP header parse\n";
                 }
                 if (icmp_hdr.type == ICMP_TYPE_ECHO_REPLY
-#if not defined(_WIN32)
                         && icmp_hdr.identifier == m_identifier
-#endif
                         && icmp_hdr.sequence_number == m_sequence_number)
                 {
                     m_cv.notify_one();
@@ -81,7 +80,7 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
             }
             else
             {
-                std::cerr << "Recv failed [" << errno << "] " << strerror(errno) << '\n';
+                std::cerr << "Recv failed [" << ret.code().value() << "] " << ret.code().message() << '\n';
                 exit(EXIT_FAILURE);
             }
         }
