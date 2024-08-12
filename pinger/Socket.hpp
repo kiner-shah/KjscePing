@@ -13,6 +13,7 @@ struct Socket
     virtual std::system_error send(const char* buffer, std::size_t buffer_length, int& bytes_sent) = 0;
     virtual std::system_error recv(char* buffer, std::size_t buffer_length, int& bytes_recv) = 0;
     virtual std::system_error disconnect() = 0;
+    virtual bool is_raw_socket() const = 0;
 };
 
 std::unique_ptr<Socket> create_socket();

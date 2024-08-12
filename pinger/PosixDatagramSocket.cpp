@@ -161,5 +161,9 @@ std::system_error PosixDatagramSocket::disconnect()
     return std::system_error(std::error_code());
 }
 
+bool PosixDatagramSocket::is_raw_socket() const
+{
+    return false;
+}
 }   // namespace pinger
 #endif  // if defined(__unix__)

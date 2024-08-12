@@ -103,7 +103,7 @@ std::istream& operator>>(std::istream& is, ipv4_header& header)
     {
         is.read(buffer.data() + IPV4_HEADER_SIZE_EXCLUDING_OPTIONS_IN_BYTES, options_length);
     }
-    // TODO: use ntohl, ntohs, etc.
+
     header.dscp_and_ecn = buffer[1];
     header.total_length = (buffer[2] << 8) | buffer[3];
     header.identification = (buffer[4] << 8) | buffer[5];

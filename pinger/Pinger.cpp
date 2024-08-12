@@ -55,13 +55,18 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
                 s.write(buffer.data(), bytes_recv);
                 icmp_header icmp_hdr;
                 ipv4_header ip_hdr;
-#if defined(_WIN32)
-                // TODO: instead add a function in Socket for checking if it's a raw socket
-                if (!(s >> ip_hdr))
+
+                if (m_socket->is_raw_socket())
                 {
-                    std::cerr << "Something went wrong in IP header parse\n";
+                    // When a raw socket is created with ICMP protocol, during send it doesn't
+                    // require IPv4 header, maybe it adds it automatically. But during recv, it
+                    // requires us to parse IPv4 header, not sure why.
+                    if (!(s >> ip_hdr))
+                    {
+                        std::cerr << "Something went wrong in IP header parse\n";
+                    }
                 }
-#endif
+
                 if (!(s >> icmp_hdr))
                 {
                     std::cerr << "Something went wrong in ICMP header parse\n";
@@ -103,7 +108,6 @@ Pinger::~Pinger()
 
 void Pinger::start()
 {
-    // TODO: put send operation in a separate thread
     using namespace std::chrono_literals;
 
     const std::string message = "Hello from \"pinger\"";

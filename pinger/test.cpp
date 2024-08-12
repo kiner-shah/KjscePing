@@ -3,6 +3,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <future>
 
 int main()
 {
@@ -15,5 +16,12 @@ int main()
     };
 
     pinger::Pinger pinger{config, callback};
-    pinger.start();
+    auto f = std::async(std::launch::async, [&pinger]() {
+        pinger.start();
+        });
+    auto status = f.wait_for(std::chrono::seconds(30));
+    if (status == std::future_status::timeout || status == std::future_status::ready)
+    {
+        pinger.stop();
+    }
 }

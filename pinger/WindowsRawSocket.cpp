@@ -172,5 +172,10 @@ std::system_error WindowsRawSocket::disconnect()
     //::closesocket(m_sock);
     return std::system_error(std::error_code());
 }
+
+bool WindowsRawSocket::is_raw_socket() const
+{
+    return true;
+}
 } // namespace pinger
 #endif  // if defined(_WIN32)
