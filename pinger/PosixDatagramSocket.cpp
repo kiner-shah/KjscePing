@@ -10,6 +10,59 @@
 #include <errno.h>
 #include <arpa/inet.h>
 
+namespace
+{
+static std::error_code get_error_code(int linux_errno)
+{
+    std::errc ec;
+    switch (linux_errno)
+    {
+    case EACCES: ec = std::errc::permission_denied; break;
+    case EADDRINUSE: ec = std::errc::address_in_use; break;
+    case EADDRNOTAVAIL: ec = std::errc::address_not_available; break;
+    case EAGAIN: ec = std::errc::resource_unavailable_try_again; break;
+    case EFAULT: ec = std::errc::bad_address; break;
+    case EINPROGRESS: ec = std::errc::operation_in_progress; break;
+    case EINVAL: ec = std::errc::invalid_argument; break;
+    case ENOBUFS: ec = std::errc::no_buffer_space; break;
+    case ENOTSOCK: ec = std::errc::not_a_socket; break;
+    case ENETDOWN: ec = std::errc::network_down; break;
+    case EINTR: ec = std::errc::interrupted; break;
+    case EALREADY: ec = std::errc::connection_already_in_progress; break;
+    case EAFNOSUPPORT: ec = std::errc::address_family_not_supported; break;
+    case ECONNREFUSED: ec = std::errc::connection_refused; break;
+    case EISCONN: ec = std::errc::already_connected; break;
+    case ENOTCONN: ec = std::errc::not_connected; break;
+    case ENETUNREACH: ec = std::errc::network_unreachable; break;
+    case ENETRESET: ec = std::errc::network_reset; break;
+    case EHOSTUNREACH: ec = std::errc::host_unreachable; break;
+    case ETIMEDOUT: ec = std::errc::timed_out; break;
+#if EWOULDBLOCK != EAGAIN
+    case EWOULDBLOCK: ec = std::errc::operation_would_block; break;
+#endif
+    case EOPNOTSUPP: ec = std::errc::operation_not_supported; break;
+    case EMSGSIZE: ec = std::errc::message_size; break;
+    case ECONNABORTED: ec = std::errc::connection_aborted; break;
+    case ECONNRESET: ec = std::errc::connection_reset; break;
+    case EDESTADDRREQ: ec = std::errc::destination_address_required; break;
+    case EBADF: ec = std::errc::bad_file_descriptor; break;
+    case ELOOP: ec = std::errc::too_many_symbolic_link_levels; break;
+    case ENAMETOOLONG: ec = std::errc::filename_too_long; break;
+    case ENOENT: ec = std::errc::no_such_file_or_directory; break;
+    case ENOMEM: ec = std::errc::not_enough_memory; break;
+    case ENOTDIR: ec = std::errc::not_a_directory; break;
+    case EROFS: ec = std::errc::read_only_file_system; break;
+    case EPROTOTYPE: ec = std::errc::wrong_protocol_type; break;
+    case EPERM: ec = std::errc::operation_not_permitted; break;
+    case EPIPE: ec = std::errc::broken_pipe; break;
+    case EIO: ec = std::errc::io_error; break;
+
+    default:
+        return std::error_code(linux_errno, std::system_category());
+    }
+    return std::make_error_code(ec);
+}
+}   // namespace
 namespace pinger
 {
 PosixDatagramSocket::PosixDatagramSocket()
@@ -18,6 +71,17 @@ PosixDatagramSocket::PosixDatagramSocket()
     if (m_sock_fd < 0)
     {
         std::cerr << "Socket creation failed [" << errno << "] " << strerror(errno) << '\n';
+        exit(EXIT_FAILURE);
+    }
+
+    ::timeval tv;
+    tv.tv_sec = 5;  // 5 seconds
+    tv.tv_usec = 0;
+    int ret = ::setsockopt(m_sock_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    if (ret < 0)
+    {
+        std::cerr << "Socket set opt failed [" << errno << "] " << strerror(errno) << '\n';
+        ::close(m_sock_fd);
         exit(EXIT_FAILURE);
     }
 }
@@ -49,13 +113,13 @@ std::system_error PosixDatagramSocket::connect(const std::uint32_t& destination_
     auto ret = ::bind(m_sock_fd, reinterpret_cast<::sockaddr*>(&addr), sizeof(addr));
     if (ret < 0)
     {
-        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(get_error_code(errno), ::strerror(errno));
     }
 
     ret = ::connect(m_sock_fd, reinterpret_cast<::sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (ret < 0)
     {
-        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(get_error_code(errno), ::strerror(errno));
     }
     return std::system_error(std::error_code());
 }
@@ -65,7 +129,7 @@ std::system_error PosixDatagramSocket::send(const char* buffer, std::size_t buff
     bytes_sent = ::sendto(m_sock_fd, buffer, buffer_length, 0, reinterpret_cast<::sockaddr*>(&m_dest_addr), sizeof(m_dest_addr));
     if (bytes_sent < 0)
     {
-        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(get_error_code(errno), ::strerror(errno));
     }
     return std::system_error(std::error_code());
 }
@@ -77,7 +141,12 @@ std::system_error PosixDatagramSocket::recv(char *buffer, std::size_t buffer_len
     bytes_recv = ::recvfrom(m_sock_fd, buffer, buffer_length, MSG_WAITALL, &recv_from_address, &recv_from_address_length);
     if (bytes_recv < 0)
     {
-        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        // Socket is blocking, and on recv timeout either EAGAIN or EWOULDBLOCK is thrown
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            return std::system_error(std::make_error_code(std::errc::timed_out), "timed out");
+        }
+        return std::system_error(get_error_code(errno), ::strerror(errno));
     }
     return std::system_error(std::error_code());
 }
@@ -87,7 +156,7 @@ std::system_error PosixDatagramSocket::disconnect()
     auto ret = ::shutdown(m_sock_fd, SHUT_RDWR);
     if (ret < 0)
     {
-        return std::system_error(std::make_error_code(static_cast<std::errc>(errno)), ::strerror(errno));
+        return std::system_error(get_error_code(errno), ::strerror(errno));
     }
     return std::system_error(std::error_code());
 }
