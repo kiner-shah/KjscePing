@@ -74,6 +74,7 @@ WindowsRawSocket::WindowsRawSocket()
         exit(EXIT_FAILURE);
     }
 
+    // Windows doesn't seem to support IPPROTO_ICMP with SOCK_DGRAM, thus used raw sockets.
     m_sock = ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (m_sock == INVALID_SOCKET)
     {
@@ -151,6 +152,7 @@ std::system_error WindowsRawSocket::recv(char *buffer, std::size_t buffer_length
 {
     sockaddr recv_from_address;
     socklen_t recv_from_address_length;
+    // Windows support recvfrom for only datagrams, thus used recv.
     auto ret = ::recv(m_sock, buffer, buffer_length, 0);
     if (ret == SOCKET_ERROR)
     {
@@ -163,13 +165,14 @@ std::system_error WindowsRawSocket::recv(char *buffer, std::size_t buffer_length
 
 std::system_error WindowsRawSocket::disconnect()
 {
-    auto ret = ::shutdown(m_sock, SD_SEND);
+    // Note: If recv is running and shutdown is called, recv continues to block (in contrast to Posix
+    // where recv throws some error).
+    auto ret = ::shutdown(m_sock, SD_BOTH);
     if (ret == SOCKET_ERROR)
     {
         int err = WSAGetLastError();
         return std::system_error(get_error_code(err), get_error_message_from_error_code(err));
     }
-    //::closesocket(m_sock);
     return std::system_error(std::error_code());
 }
 
