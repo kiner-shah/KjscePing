@@ -80,6 +80,10 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
             }
             else
             {
+                if (ret.code().value() == static_cast<int>(std::errc::timed_out))
+                {
+                    continue;
+                }
                 std::cerr << "Recv failed [" << ret.code().value() << "] " << ret.code().message() << '\n';
                 exit(EXIT_FAILURE);
             }
