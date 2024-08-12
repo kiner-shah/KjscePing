@@ -26,7 +26,8 @@ class Pinger
     PingerCallbackOnNetworkChange m_callback;
     bool m_is_network_available {false};
     PingerConfig m_conf;
-    std::atomic_bool m_is_recv_thread_running {false};
+    std::atomic_bool m_is_stopped {false};
+    std::atomic_bool m_is_request_sent{ false };
     std::unique_ptr<Socket> m_socket;
     std::thread m_receive_thread;
     std::mutex m_mutex;

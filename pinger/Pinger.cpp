@@ -14,7 +14,6 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
     , m_source_ip_address{get_ip_address("172.23.94.231")}
     , m_dest_ip_address{get_ip_address(conf.destination_address)}
 {
-    // TODO: create a socket (use a factory?), call connect
     m_socket = create_socket();
     auto ret = m_socket->connect(m_dest_ip_address);
     if (ret.code().value() != 0)
@@ -32,19 +31,23 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
     }
     else
     {
-        m_loop_condition = [] {
-            return true;
+        m_loop_condition = [this]() {
+            return !m_is_stopped.load(std::memory_order_relaxed);
         };
     }
     m_receive_thread = std::thread([this]() {
-        m_is_recv_thread_running = true;
-        while (m_is_recv_thread_running)
+        while (!m_is_stopped)
         {
+            if (!m_is_request_sent)
+            {
+                continue;
+            }
             std::array<char, 256> buffer;
             std::fill(buffer.begin(), buffer.end(), 0);
             int bytes_recv = 0;
             auto ret = m_socket->recv(buffer.data(), buffer.size(), bytes_recv);
 
+            m_is_request_sent = false;
             // If ok
             if (ret.code().value() == 0)
             {
@@ -53,6 +56,7 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
                 icmp_header icmp_hdr;
                 ipv4_header ip_hdr;
 #if defined(_WIN32)
+                // TODO: instead add a function in Socket for checking if it's a raw socket
                 if (!(s >> ip_hdr))
                 {
                     std::cerr << "Something went wrong in IP header parse\n";
@@ -99,6 +103,7 @@ Pinger::~Pinger()
 
 void Pinger::start()
 {
+    // TODO: put send operation in a separate thread
     using namespace std::chrono_literals;
 
     const std::string message = "Hello from \"pinger\"";
@@ -137,6 +142,7 @@ void Pinger::start()
         }
         else
         {
+            m_is_request_sent = true;
             m_request_start_time = std::chrono::steady_clock::now();
             // Wait for 5 seconds for response
             std::unique_lock<std::mutex> lock(m_mutex);
@@ -166,9 +172,9 @@ void Pinger::start()
 
 void Pinger::stop()
 {
-    if (m_is_recv_thread_running)
+    if (!m_is_stopped)
     {
-        m_is_recv_thread_running = false;
+        m_is_stopped = true;
     }
     m_socket->disconnect();
 }
