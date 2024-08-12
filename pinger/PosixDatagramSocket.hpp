@@ -19,6 +19,7 @@ public:
     std::system_error send(const char* buffer, std::size_t buffer_length, int& bytes_sent) override;
     std::system_error recv(char* buffer, std::size_t buffer_length, int& bytes_recv) override;
     std::system_error disconnect() override;
+    bool is_raw_socket() const override;
 };
 }   // namespace pinger
 #endif  // if defined(__unix__)
