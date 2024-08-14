@@ -7,8 +7,10 @@
 
 int main()
 {
+    using namespace std::chrono_literals;
+
     pinger::PingerConfig config;
-    config.count = 4;
+    config.count = 20;
     config.destination_address = "google.com";
 
     auto callback = [](bool is_online) {
@@ -16,12 +18,7 @@ int main()
     };
 
     pinger::Pinger pinger{config, callback};
-    auto f = std::async(std::launch::async, [&pinger]() {
-        pinger.start();
-        });
-    auto status = f.wait_for(std::chrono::seconds(30));
-    if (status == std::future_status::timeout || status == std::future_status::ready)
-    {
-        pinger.stop();
-    }
+    pinger.start();
+    std::this_thread::sleep_for(10s);
+    pinger.stop();
 }
