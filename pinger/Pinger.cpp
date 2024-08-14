@@ -14,6 +14,18 @@ Pinger::Pinger(const PingerConfig &conf, PingerCallbackOnNetworkChange callback)
     , m_source_ip_address{get_ip_address("172.23.94.231")}
     , m_dest_ip_address{get_ip_address(conf.destination_address)}
 {
+    if (m_source_ip_address == 0)
+    {
+        std::cerr << "Couldn't resolve 172.23.94.231\n";
+        exit(EXIT_FAILURE);
+    }
+
+    if (m_dest_ip_address == 0)
+    {
+        std::cerr << "Couldn't resolve " << conf.destination_address << '\n';
+        exit(EXIT_FAILURE);
+    }
+
     m_socket = create_socket();
     auto ret = m_socket->connect(m_dest_ip_address);
     if (ret.code().value() != 0)
